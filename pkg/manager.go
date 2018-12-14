@@ -1,8 +1,7 @@
-package servers
+package pkg
 
 import (
 	"fmt"
-	"io"
 	"net"
 	"time"
 
@@ -10,87 +9,42 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type Peer struct {
-	ID   string
-	Bind string
-}
-
-type Peers map[string]string
-
-type Logger struct {
-}
-
-func (logger Logger) Write(data []byte) (count int, error error) {
-	return len(data), nil
-}
-
-type FSM struct {
-}
-
-func (fsm FSM) Apply(log *raft.Log) interface{} {
-	return nil
-}
-
-func (fsm FSM) Restore(snap io.ReadCloser) error {
-	return nil
-}
-
-func (fsm FSM) Snapshot() (raft.FSMSnapshot, error) {
-	return Snapshot{}, nil
-}
-
-type Snapshot struct {
-}
-
-func (snapshot Snapshot) Persist(sink raft.SnapshotSink) error {
-	return nil
-}
-
-func (snapshot Snapshot) Release() {
-}
-
 type VIPManager struct {
-	_type      string
-	id         string
-	bind       string
-	virtualIP  string
-	fsm        FSM
-	peers      Peers
-	logger     Logger
-	_interface string
-	stop       chan bool
+	id            string
+	bind          string
+	virtualIP     string
+	fsm           FSM
+	peers         Peers
+	logger        Logger
+	_interface    string
+	stop          chan bool
+	commandRunner CommandRunner
 }
 
-func NewVIPManager(_type, id, bind string, virtualIP string, peers Peers, logger Logger, _interface string) *VIPManager {
-	return &VIPManager{_type: _type, id: id, peers: peers, bind: bind, virtualIP: virtualIP, fsm: FSM{}, logger: logger, _interface: _interface}
-}
-
-func (manager *VIPManager) Name() string {
-	return "vip-manager-" + manager._type
+func NewVIPManager(id, bind string, virtualIP string, peers Peers, logger Logger, _interface string, commandRunner CommandRunner) *VIPManager {
+	return &VIPManager{id: id, peers: peers, bind: bind, virtualIP: virtualIP, fsm: FSM{}, logger: logger, _interface: _interface, commandRunner: commandRunner}
 }
 
 func (manager *VIPManager) updateNetworkConfiguration(action string) error {
 	command := fmt.Sprintf("ip addr %s %s/32 dev %s", action, manager.virtualIP, manager._interface)
 
-	/*
-		if error := utils.RunCommand(command); error != nil {
-			log.WithFields(log.Fields{"action": action, "name": manager.Name(), "error": error}).Error("Network update failed")
+	if error := manager.commandRunner.Run(command); error != nil {
+		log.WithFields(log.Fields{"action": action, "error": error}).Error("Network update failed")
 
-			return error
-		}
-	*/
+		return error
+	}
 
 	return nil
 }
 
 func (manager *VIPManager) addIP() error {
-	log.WithFields(log.Fields{"name": manager.Name()}).Info("Add virtual ip")
+	log.Info("Add virtual ip")
 
 	return manager.updateNetworkConfiguration("add")
 }
 
 func (manager *VIPManager) deleteIP() error {
-	log.WithFields(log.Fields{"name": manager.Name()}).Info("Delete virtual ip")
+	log.Info("Delete virtual ip")
 
 	return manager.updateNetworkConfiguration("delete")
 }
@@ -156,9 +110,13 @@ func (manager *VIPManager) Start() error {
 		}
 	}()
 
+	log.Info("Started")
+
 	return nil
 }
 
 func (manager *VIPManager) Stop() {
 	close(manager.stop)
+
+	log.Info("Stopped")
 }

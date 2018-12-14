@@ -11,8 +11,7 @@ go:
 install: true
 
 script:
-  - docker build -t darxkies/virtual-ip-build build
-  - docker run --rm -v $TRAVIS_BUILD_DIR:/go darxkies/virtual-ip-build
+  - make
 
 deploy:
   skip_cleanup: true

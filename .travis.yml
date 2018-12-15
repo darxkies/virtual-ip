@@ -20,6 +20,7 @@ deploy:
   - provider: script
     script: make deploy
     on:
+      tags: true
       branch: master
   - provider: releases
     skip_cleanup: true

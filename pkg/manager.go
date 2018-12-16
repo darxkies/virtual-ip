@@ -23,6 +23,22 @@ func NewVIPManager(id, bind string, peers Peers, logger Logger, networkConfigura
 	return &VIPManager{id: id, peers: peers, bind: bind, fsm: FSM{}, logger: logger, networkConfigurator: networkConfigurator}
 }
 
+func (manager *VIPManager) addIP(verbose bool) {
+	if error := manager.networkConfigurator.AddIP(); error != nil {
+		log.WithFields(log.Fields{"error": error, "ip": manager.networkConfigurator.IP(), "interface": manager.networkConfigurator.Interface()}).Error("Could not set ip")
+	} else if verbose {
+		log.WithFields(log.Fields{"ip": manager.networkConfigurator.IP(), "interface": manager.networkConfigurator.Interface()}).Info("Added IP")
+	}
+}
+
+func (manager *VIPManager) deleteIP(verbose bool) {
+	if error := manager.networkConfigurator.DeleteIP(); error != nil {
+		log.WithFields(log.Fields{"error": error, "ip": manager.networkConfigurator.IP(), "interface": manager.networkConfigurator.Interface()}).Error("Could not delete ip")
+	} else if verbose {
+		log.WithFields(log.Fields{"ip": manager.networkConfigurator.IP(), "interface": manager.networkConfigurator.Interface()}).Info("Deleted IP")
+	}
+}
+
 func (manager *VIPManager) Start() error {
 	// Create configuration
 	config := raft.DefaultConfig()
@@ -69,9 +85,7 @@ func (manager *VIPManager) Start() error {
 	ticker := time.NewTicker(time.Second)
 	isLeader := false
 
-	if error = manager.networkConfigurator.DeleteIP(); error != nil {
-		log.WithFields(log.Fields{"error": error}).Error("Could not delete ip")
-	}
+	manager.deleteIP(false)
 
 	go func() {
 		for {
@@ -82,46 +96,35 @@ func (manager *VIPManager) Start() error {
 
 					log.Info("Leading")
 
-					if error = manager.networkConfigurator.AddIP(); error != nil {
-						log.WithFields(log.Fields{"error": error}).Error("Could not set ip")
-					} else {
-						log.Info("Added IP")
-					}
+					manager.addIP(true)
+
 				} else {
 					isLeader = false
 
 					log.Info("Following")
 
-					if error = manager.networkConfigurator.DeleteIP(); error != nil {
-						log.WithFields(log.Fields{"error": error}).Error("Could not delete ip")
-					} else {
-						log.Info("Deleted IP")
-					}
+					manager.deleteIP(true)
 				}
 
 			case <-ticker.C:
 				if isLeader {
 					result, error := manager.networkConfigurator.IsSet()
 					if error != nil {
-						log.WithFields(log.Fields{"error": error}).Error("Could not check ip")
+						log.WithFields(log.Fields{"error": error, "ip": manager.networkConfigurator.IP(), "interface": manager.networkConfigurator.Interface()}).Error("Could not check ip")
 					}
 
 					if result == false {
 						log.Error("Lost IP")
 
-						if error = manager.networkConfigurator.AddIP(); error != nil {
-							log.WithFields(log.Fields{"error": error}).Error("Could not set ip")
-						} else {
-							log.Info("Added IP again")
-						}
+						manager.addIP(true)
 					}
 				}
 
 			case <-manager.stop:
 				log.Info("Stopping")
 
-				if error = manager.networkConfigurator.DeleteIP(); error != nil {
-					log.WithFields(log.Fields{"error": error}).Error("Could not delete ip")
+				if isLeader {
+					manager.deleteIP(true)
 				}
 
 				close(manager.finished)

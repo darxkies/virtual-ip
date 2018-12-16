@@ -9,6 +9,8 @@ type NetworkConfigurator interface {
 	AddIP() error
 	DeleteIP() error
 	IsSet() (bool, error)
+	IP() string
+	Interface() string
 }
 
 type NetlinkNetworkConfigurator struct {
@@ -89,4 +91,12 @@ func (configurator NetlinkNetworkConfigurator) IsSet() (result bool, error error
 	}
 
 	return false, nil
+}
+
+func (configurator NetlinkNetworkConfigurator) IP() string {
+	return configurator.address.IP.String()
+}
+
+func (configurator NetlinkNetworkConfigurator) Interface() string {
+	return configurator.link.Attrs().Name
 }

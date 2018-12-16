@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"os/signal"
 	"strings"
@@ -13,14 +12,17 @@ import (
 )
 
 func main() {
-	fmt.Printf("Version: %s\n", version.Version)
 
 	id := flag.String("id", "vip", "ID of this node")
 	bind := flag.String("bind", "0.0.0.0", "RAFT bind addreess")
-	virtualIP := flag.String("virtual-ip", "192.168.0.25", "Virtual/Floating IP")
 	peersList := flag.String("peers", "", "Peers as a comma separated list of peer-id=peer-address:peer-port including the id and the bind of this instance")
 	_interface := flag.String("interface", "lo", "Network interface")
+	virtualIP := flag.String("virtual-ip", "192.168.0.25", "Virtual/Floating IP")
 	flag.Parse()
+
+	log.WithFields(log.Fields{"version": version.Version}).Info("Virtual-IP")
+	log.WithFields(log.Fields{"id": *id, "bind": *bind, "peers": *peersList}).Info("Cluster")
+	log.WithFields(log.Fields{"virtual-ip": *virtualIP, "interface": *_interface}).Info("Network")
 
 	netlinkNetworkConfigurator, error := pkg.NewNetlinkNetworkConfigurator(*virtualIP, *_interface)
 	if error != nil {

@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/signal"
 	"strings"
-	"time"
 
 	"github.com/darxkies/virtual-ip/pkg"
 	"github.com/darxkies/virtual-ip/version"
@@ -19,12 +18,16 @@ func main() {
 	id := flag.String("id", "vip", "ID of this node")
 	bind := flag.String("bind", "0.0.0.0", "RAFT bind addreess")
 	virtualIP := flag.String("virtual-ip", "192.168.0.25", "Virtual/Floating IP")
-	timeout := flag.Int("timeout", 10, "Shell command timeout")
 	peersList := flag.String("peers", "", "Peers as a comma separated list of peer-id=peer-address:peer-port including the id and the bind of this instance")
-	_interface := flag.String("interface", "enp3s0:1", "Network interface")
+	_interface := flag.String("interface", "lo", "Network interface")
 	flag.Parse()
 
-	commandRunner := pkg.NewShellCommandRunner(time.Duration(*timeout))
+	netlinkNetworkConfigurator, error := pkg.NewNetlinkNetworkConfigurator(*virtualIP, *_interface)
+	if error != nil {
+		log.WithFields(log.Fields{"error": error}).Error("Network failure")
+
+		os.Exit(-1)
+	}
 
 	peers := pkg.Peers{}
 
@@ -44,7 +47,7 @@ func main() {
 
 	logger := pkg.Logger{}
 
-	vipManager := pkg.NewVIPManager(*id, *bind, *virtualIP, peers, logger, *_interface, commandRunner)
+	vipManager := pkg.NewVIPManager(*id, *bind, peers, logger, netlinkNetworkConfigurator)
 	if error := vipManager.Start(); error != nil {
 		log.WithFields(log.Fields{"error": error}).Error("Start failed")
 

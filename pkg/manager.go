@@ -1,7 +1,6 @@
 package pkg
 
 import (
-	"fmt"
 	"net"
 	"time"
 
@@ -10,43 +9,18 @@ import (
 )
 
 type VIPManager struct {
-	id            string
-	bind          string
-	virtualIP     string
-	fsm           FSM
-	peers         Peers
-	logger        Logger
-	_interface    string
-	stop          chan bool
-	commandRunner CommandRunner
+	id                  string
+	bind                string
+	fsm                 FSM
+	peers               Peers
+	logger              Logger
+	stop                chan bool
+	finished            chan bool
+	networkConfigurator NetworkConfigurator
 }
 
-func NewVIPManager(id, bind string, virtualIP string, peers Peers, logger Logger, _interface string, commandRunner CommandRunner) *VIPManager {
-	return &VIPManager{id: id, peers: peers, bind: bind, virtualIP: virtualIP, fsm: FSM{}, logger: logger, _interface: _interface, commandRunner: commandRunner}
-}
-
-func (manager *VIPManager) updateNetworkConfiguration(action string) error {
-	command := fmt.Sprintf("ip addr %s %s/32 dev %s", action, manager.virtualIP, manager._interface)
-
-	if error := manager.commandRunner.Run(command); error != nil {
-		log.WithFields(log.Fields{"action": action, "error": error}).Error("Network update failed")
-
-		return error
-	}
-
-	return nil
-}
-
-func (manager *VIPManager) addIP() error {
-	log.Info("Add virtual ip")
-
-	return manager.updateNetworkConfiguration("add")
-}
-
-func (manager *VIPManager) deleteIP() error {
-	log.Info("Delete virtual ip")
-
-	return manager.updateNetworkConfiguration("delete")
+func NewVIPManager(id, bind string, peers Peers, logger Logger, networkConfigurator NetworkConfigurator) *VIPManager {
+	return &VIPManager{id: id, peers: peers, bind: bind, fsm: FSM{}, logger: logger, networkConfigurator: networkConfigurator}
 }
 
 func (manager *VIPManager) Start() error {
@@ -91,21 +65,68 @@ func (manager *VIPManager) Start() error {
 	}
 
 	manager.stop = make(chan bool, 1)
+	manager.finished = make(chan bool, 1)
+	ticker := time.NewTicker(time.Second)
+	isLeader := false
 
-	_ = manager.deleteIP()
+	if error = manager.networkConfigurator.DeleteIP(); error != nil {
+		log.WithFields(log.Fields{"error": error}).Error("Could not delete ip")
+	}
 
 	go func() {
 		for {
 			select {
 			case leader := <-raftServer.LeaderCh():
 				if leader {
-					_ = manager.addIP()
+					isLeader = true
+
+					log.Info("Leading")
+
+					if error = manager.networkConfigurator.AddIP(); error != nil {
+						log.WithFields(log.Fields{"error": error}).Error("Could not set ip")
+					} else {
+						log.Info("Added IP")
+					}
 				} else {
-					_ = manager.deleteIP()
+					isLeader = false
+
+					log.Info("Following")
+
+					if error = manager.networkConfigurator.DeleteIP(); error != nil {
+						log.WithFields(log.Fields{"error": error}).Error("Could not delete ip")
+					} else {
+						log.Info("Deleted IP")
+					}
+				}
+
+			case <-ticker.C:
+				if isLeader {
+					result, error := manager.networkConfigurator.IsSet()
+					if error != nil {
+						log.WithFields(log.Fields{"error": error}).Error("Could not check ip")
+					}
+
+					if result == false {
+						log.Error("Lost IP")
+
+						if error = manager.networkConfigurator.AddIP(); error != nil {
+							log.WithFields(log.Fields{"error": error}).Error("Could not set ip")
+						} else {
+							log.Info("Added IP again")
+						}
+					}
 				}
 
 			case <-manager.stop:
-				_ = manager.deleteIP()
+				log.Info("Stopping")
+
+				if error = manager.networkConfigurator.DeleteIP(); error != nil {
+					log.WithFields(log.Fields{"error": error}).Error("Could not delete ip")
+				}
+
+				close(manager.finished)
+
+				return
 			}
 		}
 	}()
@@ -117,6 +138,8 @@ func (manager *VIPManager) Start() error {
 
 func (manager *VIPManager) Stop() {
 	close(manager.stop)
+
+	<-manager.finished
 
 	log.Info("Stopped")
 }

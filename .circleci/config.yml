@@ -8,4 +8,4 @@ jobs:
     steps:
       - checkout
 
-      - run: make build-binaries
+      - run: make 

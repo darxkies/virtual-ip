@@ -3,18 +3,16 @@ module github.com/darxkies/virtual-ip
 go 1.15
 
 require (
-	github.com/armon/go-metrics v0.0.0-20180917152333-f0300d1749da
-	github.com/cespare/reflex v0.2.0 // indirect
-	github.com/fsnotify/fsnotify v1.4.7 // indirect
-	github.com/hashicorp/go-immutable-radix v1.0.0 // indirect
-	github.com/hashicorp/go-msgpack v0.0.0-20150518234257-fa3f63826f7c
-	github.com/hashicorp/raft v1.0.0
-	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
-	github.com/kr/pty v1.1.3 // indirect
-	github.com/ogier/pflag v0.0.1 // indirect
-	github.com/pkg/errors v0.8.0
-	github.com/sirupsen/logrus v1.2.0
-	github.com/vishvananda/netlink v1.0.0
-	github.com/vishvananda/netns v0.0.0-20180720170159-13995c7128cc
-	golang.org/x/sys v0.0.0-20181213200352-4d1cda033e06
+	github.com/armon/go-metrics v0.3.4 // indirect
+	github.com/fatih/color v1.10.0 // indirect
+	github.com/hashicorp/go-hclog v0.15.0 // indirect
+	github.com/hashicorp/go-immutable-radix v1.3.0 // indirect
+	github.com/hashicorp/go-msgpack v1.1.5 // indirect
+	github.com/hashicorp/golang-lru v0.5.4 // indirect
+	github.com/hashicorp/raft v1.2.0
+	github.com/pkg/errors v0.9.1
+	github.com/sirupsen/logrus v1.7.0
+	github.com/vishvananda/netlink v1.1.0
+	github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae // indirect
+	golang.org/x/sys v0.0.0-20201119102817-f84b799fce68 // indirect
 )

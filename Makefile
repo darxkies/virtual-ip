@@ -67,6 +67,9 @@ cluster-node-ip:
 cluster-node-peer:
 	@echo "$(NAME)=$(IP):10000"
 
+cluster-node-ping:
+	IP=$(VIRTUAL_IP); $(SSH) ping -q -c 1 $$IP
+
 cluster-node-virtual-ip-run:
 	while [ true ]; do $(SSH) killall virtual-ip; $(SSH) /virtual-ip -id $(NAME) -bind $(IP):10000 -interface $(INTERFACE) -peers $$($(MAKE) -s cluster-peers) -virtual-ip $(VIRTUAL_IP); done
 
@@ -92,8 +95,14 @@ cluster-virtual-ip-update:
 cluster-virtual-ip-ping:
 	ping $(VIRTUAL_IP)
 
+cluster-ping:
+	for i in $(NODES); do $(MAKE) cluster-node-ping NAME=$$i; done
+
 cluster-inspect:
 	for i in $(NODES); do echo $$i; $(MAKE) -s cluster-node-inspect NAME=$$i; done
+
+cluster-kill-random:
+	while [ true ]; do $(MAKE) -s cluster-ping cluster-node-virtual-ip-kill NAME=$$(shuf -n1 -e $(NODES)); sleep $$(shuf -n1 -e 3 4 5); echo; done
 
 clean:
 	sudo rm -Rf bin vendor

@@ -10,8 +10,8 @@ CLOUD_INIT="disable_root: 0\\nssh_authorized_keys:\\n  - $(SSH_KEY)"
 NODES=virtual-ip-node00 virtual-ip-node01 virtual-ip-node02
 VIRTUAL_IP_SUFFIX=50
 VIRTUAL_IP=$$($(MAKE) -s cluster-node-ip NAME=$(NAME) | sed -r 's/\.[0-9]+$$//').$(VIRTUAL_IP_SUFFIX)
-SSH=ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@$(IP)
-SCP=scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null 
+SSH=ssh -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@$(IP)
+SCP=scp -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null 
 INTERFACE=ens4 
 
 compile:
@@ -55,7 +55,8 @@ cluster-node-inspect:
 	$(SSH) ip a show dev $(INTERFACE)
 
 cluster-node-virtual-ip-update:
-	-$(SSH) rm /virtual-ip.deleted; mv /virtual-ip /virtual-ip.deleted
+	-$(SSH) rm /virtual-ip.deleted
+	-$(SSH) mv /virtual-ip /virtual-ip.deleted
 	-$(SCP) virtual-ip root@$(IP):/
 
 cluster-node-virtual-ip-kill:

@@ -1,6 +1,9 @@
 package pkg
 
 import (
+	"net"
+
+	"github.com/j-keck/arping"
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 )
@@ -14,14 +17,25 @@ type NetworkConfigurator interface {
 }
 
 type NetlinkNetworkConfigurator struct {
-	address *netlink.Addr
-	link    netlink.Link
+	address    *netlink.Addr
+	link       netlink.Link
+	_interface string
+	ip         net.IP
 }
 
 func NewNetlinkNetworkConfigurator(_address, _interface string) (result NetlinkNetworkConfigurator, error error) {
-	result = NetlinkNetworkConfigurator{}
+	cidr := _address + "/32"
 
-	result.address, error = netlink.ParseAddr(_address + "/32")
+	ip, _, error := net.ParseCIDR(cidr)
+	if error != nil {
+		error = errors.Wrapf(error, "could not parse ip '%s'", _address)
+
+		return
+	}
+
+	result = NetlinkNetworkConfigurator{_interface: _interface, ip: ip}
+
+	result.address, error = netlink.ParseAddr(cidr)
 	if error != nil {
 		error = errors.Wrapf(error, "could not parse address '%s'", _address)
 
@@ -51,6 +65,10 @@ func (configurator NetlinkNetworkConfigurator) AddIP() error {
 
 	if error = netlink.AddrAdd(configurator.link, configurator.address); error != nil {
 		return errors.Wrap(error, "could not add ip")
+	}
+
+	if error = arping.GratuitousArpOverIfaceByName(configurator.ip, configurator._interface); error != nil {
+		return errors.Wrap(error, "gratuitous arp failed")
 	}
 
 	return nil

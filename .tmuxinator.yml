@@ -9,10 +9,10 @@ windows:
         - make watch-compile-and-deploy
   - shell:
   - node00:
-      - make cluster-node-virtual-ip-run NAME=node00
+      - make cluster-node-virtual-ip-run NAME=virtual-ip-node00
   - node01:
-      - make cluster-node-virtual-ip-run NAME=node01
+      - make cluster-node-virtual-ip-run NAME=virtual-ip-node01
   - node02:
-      - make cluster-node-virtual-ip-run NAME=node02
+      - make cluster-node-virtual-ip-run NAME=virtual-ip-node02
   - ping:
       - make cluster-virtual-ip-ping

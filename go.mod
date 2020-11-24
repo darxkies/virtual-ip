@@ -4,6 +4,7 @@ go 1.15
 
 require (
 	github.com/armon/go-metrics v0.3.4 // indirect
+	github.com/cespare/reflex v0.3.0 // indirect
 	github.com/fatih/color v1.10.0 // indirect
 	github.com/hashicorp/go-hclog v0.15.0 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.0 // indirect
